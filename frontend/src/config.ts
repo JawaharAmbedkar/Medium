@@ -1,0 +1,2 @@
+export const BACKEND_URL = "https://medium-project.jawaharambedkar786.workers.dev"
+//postgresql://neon_db:npg_TvnyR9Xtx2pb@ep-cold-truth-a1hwaq6t-pooler.ap-southeast-1.aws.neon.tech/medium-data?sslmode=require&channel_binding=require
