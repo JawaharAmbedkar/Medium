@@ -12,36 +12,39 @@ export const userRouter = new Hono<{
 }>();
 
 userRouter.post('/signup', async (c) => {
-	const body = await c.req.json()
+	const body = await c.req.json();
 	const { success } = signupInput.safeParse(body);
 	if (!success) {
 		c.status(411);
 		return c.json({
-			message: "inputs not correct"
-		})
+			message: "inputs not correct",
+		});
 	}
+
 	const prisma = new PrismaClient({
 		datasourceUrl: c.env.DATABASE_URL,
-	}).$extends(withAccelerate())
+	}).$extends(withAccelerate());
 
 	try {
+		// Normalize email before saving
+		const normalizedEmail = body.username.toLowerCase();
+
 		const user = await prisma.user.create({
 			data: {
-				username: body.username,
+				username: normalizedEmail,  
 				password: body.password,
-				name: body.name
-			}
-		})
-		const jwt = await sign({
-			id: user.id
-		}, c.env.JWT_SECRET)
+				name: body.name,
+			},
+		});
 
-		return c.text(jwt)
+		const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
+		return c.text(jwt);
 	} catch (e) {
-		c.status(411)
-		return c.text("User already exists with this email")
+		c.status(411);
+		return c.text("User already exists with this email");
 	}
-})
+});
+
 
 userRouter.post('/signin', async (c) => {
 	const body = await c.req.json()
@@ -79,46 +82,46 @@ userRouter.post('/signin', async (c) => {
 })
 
 userRouter.post('/update-profile', async (c) => {
-  const authHeader = c.req.header("authorization") || "";
-  if (!authHeader) {
-    c.status(401);
-    return c.json({ message: "No token provided" });
-  }
+	const authHeader = c.req.header("authorization") || "";
+	if (!authHeader) {
+		c.status(401);
+		return c.json({ message: "No token provided" });
+	}
 
-  try {
-    const token = authHeader.replace("Bearer ", "");
-    const decoded = await verify(token, c.env.JWT_SECRET) as { id: number };
-    const userId = decoded.id;
+	try {
+		const token = authHeader.replace("Bearer ", "");
+		const decoded = await verify(token, c.env.JWT_SECRET) as { id: number };
+		const userId = decoded.id;
 
-    const { profilePic, name } = await c.req.json<{ 
-      profilePic?: string; 
-      name?: string;
-    }>();
+		const { profilePic, name } = await c.req.json<{
+			profilePic?: string;
+			name?: string;
+		}>();
 
-    if (!profilePic && !name) {
-      c.status(400);
-      return c.json({ message: "Nothing to update" });
-    }
+		if (!profilePic && !name) {
+			c.status(400);
+			return c.json({ message: "Nothing to update" });
+		}
 
-    const prisma = new PrismaClient({
-      datasourceUrl: c.env.DATABASE_URL,
-    }).$extends(withAccelerate());
+		const prisma = new PrismaClient({
+			datasourceUrl: c.env.DATABASE_URL,
+		}).$extends(withAccelerate());
 
-    const updateData: any = {};
-    if (profilePic) updateData.profilePic = profilePic;
-    if (name) updateData.name = name; // ✅ update name instead of username
+		const updateData: any = {};
+		if (profilePic) updateData.profilePic = profilePic;
+		if (name) updateData.name = name; // ✅ update name instead of username
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-    });
+		await prisma.user.update({
+			where: { id: userId },
+			data: updateData,
+		});
 
-    return c.json({ message: "Profile updated successfully" });
-  } catch (err) {
-    console.error(err);
-    c.status(403);
-    return c.json({ message: "Invalid token or request" });
-  }
+		return c.json({ message: "Profile updated successfully" });
+	} catch (err) {
+		console.error(err);
+		c.status(403);
+		return c.json({ message: "Invalid token or request" });
+	}
 });
 
 
